@@ -15,6 +15,7 @@
 #include "sensor_msgs/LaserScan.h"
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/Pose2D.h"
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "sensor_msgs/Range.h"
 #include "std_msgs/UInt8MultiArray.h"
 #include "std_msgs/Float32.h"
@@ -134,10 +135,10 @@ private:
         switch (ControllerState) {
 
           case 1 :
-            //std::cout << "ROTATE" << "\n";
+            std::cout << "ROTATE" << "\n";
             //std::cout << "Diff" << (theta - theta_ref) <<"\n";
-            if (theta_real - theta_ref > 0.01 || theta_real - theta_ref < -0.01 ){
-                v = K_omega * (cos(theta_real)*(x_start-x_real) + sin(theta_real)*(y_start-y_real));
+            if (theta_real - theta_ref > 0.15 || theta_real - theta_ref < -0.15 ){
+                v = 0;//K_omega * (cos(theta_real)*(x_start-x_real) + sin(theta_real)*(y_start-y_real));
                 w = K_psi*(theta_ref-theta_real);
             } else{
                 w = 0;
@@ -155,8 +156,8 @@ private:
             break;
 
           case 2 :
-            //std::cout << "FOLLOW LINE" << "\n";
-            if(cos(theta_real)*(x_goal-x_real) + sin(theta_real)*(y_goal-y_real) > 0.01 || cos(theta_real)*(x_goal-x_real) + sin(theta_real)*(y_goal-y_real) < -0.01 ){
+            std::cout << "FOLLOW LINE" << "\n";
+            if(cos(theta_real)*(x_goal-x_real) + sin(theta_real)*(y_goal-y_real) > 0.02 || cos(theta_real)*(x_goal-x_real) + sin(theta_real)*(y_goal-y_real) < -0.02 ){
                 w = K_psi*(sin(theta_ref)*(x_real + p*cos(theta_real)-x_start) - cos(theta_ref)*(y_real + p*sin(theta_real)- y_start));
                 v = K_omega * (cos(theta_real)*(x_goal-x_real) + sin(theta_real)*(y_goal-y_real));
             } else{
@@ -447,7 +448,7 @@ private:
 
     }
 
-    void odomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
+    void odomCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg) {
         tf::Quaternion q(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
         tf::Matrix3x3 m(q);
         double roll, pitch, yaw;
@@ -459,8 +460,8 @@ private:
         if(x_real < 0.001){
         	pos_set = false;
         }else{
-        	pos_set = true;	
-        } 
+        	pos_set = true;
+        }
     }
 
 public:
@@ -472,8 +473,8 @@ public:
         this->path_follow_vel_pub = this->n.advertise<geometry_msgs::Twist>("reactive_vel", 2);
 
         // name_of_the_subscriber = n.subscribe("topic_name")
-        this->odom_sub = n.subscribe("odom", 10, &PathFollowingController::odomCallback, this);
-        this->map_sub = n.subscribe("map",10,&PathFollowingController::mapCallback,this);
+        this->odom_sub = n.subscribe("amcl_pose", 10, &PathFollowingController::odomCallback, this);
+        this->map_sub = n.subscribe("map_1",10,&PathFollowingController::mapCallback,this);
 
         this->n.getParam("/startX", startX);
         this->n.getParam("/startY", startY);
@@ -483,7 +484,7 @@ public:
         this->n.getParam("/K_omega", K_omega);
         this->n.getParam("/p", p);
         //this->n.getParam("/x_offset", x_offset);
-        //this->n.getParam("/y_offset", y_offset); 
+        //this->n.getParam("/y_offset", y_offset);
 
     }
 
